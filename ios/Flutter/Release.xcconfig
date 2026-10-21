@@ -1,0 +1,13 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
+#include "Generated.xcconfig"
+
+// School Builder addon: stock values, overridden by School.xcconfig during a
+// school build. That include must stay last.
+SCHOOL_BUNDLE_ID = com.wrteam.saas.staff
+SCHOOL_APP_DISPLAY_NAME = Saas Staff Teacher
+SCHOOL_APP_BUNDLE_NAME = Staff Teacher
+SCHOOL_DEVELOPMENT_TEAM =
+SCHOOL_MARKETING_VERSION = 1.0.0
+SCHOOL_PROJECT_VERSION = 1
+
+#include? "School.xcconfig"

@@ -1,0 +1,382 @@
+import 'package:eschool_saas_staff/app/routes.dart';
+import 'package:eschool_saas_staff/cubits/authentication/authCubit.dart';
+import 'package:eschool_saas_staff/cubits/transport/vehicleAssignmentStatusCubit.dart';
+import 'package:eschool_saas_staff/cubits/userDetails/staffAllowedPermissionsAndModulesCubit.dart';
+import 'package:eschool_saas_staff/ui/screens/home/widgets/menusWithTitleContainer.dart';
+import 'package:eschool_saas_staff/ui/screens/leaves/leavesScreen.dart';
+import 'package:eschool_saas_staff/ui/screens/staffAttendance/staffAttendanceScreen.dart';
+import 'package:eschool_saas_staff/ui/screens/staffsScreen.dart';
+import 'package:eschool_saas_staff/ui/screens/teachersScreen.dart';
+import 'package:eschool_saas_staff/ui/widgets/customMenuTile.dart';
+import 'package:eschool_saas_staff/ui/widgets/transportNavigationTile.dart';
+import 'package:eschool_saas_staff/utils/labelKeys.dart';
+import 'package:eschool_saas_staff/utils/systemModulesAndPermissions.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
+
+class StaffAcademicsContainer extends StatefulWidget {
+  const StaffAcademicsContainer({super.key});
+
+  @override
+  State<StaffAcademicsContainer> createState() =>
+      _StaffAcademicsContainerState();
+}
+
+class _StaffAcademicsContainerState extends State<StaffAcademicsContainer> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration.zero, () {
+      _fetchVehicleAssignmentStatus();
+    });
+  }
+
+  void _fetchVehicleAssignmentStatus() {
+    final authCubit = context.read<AuthCubit>();
+    final userDetails = authCubit.getUserDetails();
+    final userId = userDetails.id ?? 0;
+
+    context.read<VehicleAssignmentStatusCubit>().fetchVehicleAssignmentStatus(
+          userId: userId,
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final StaffAllowedPermissionsAndModulesCubit
+        staffAllowedPermissionsAndModulesCubit =
+        context.read<StaffAllowedPermissionsAndModulesCubit>();
+    return Column(
+      children: [
+        staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                permission: viewClassesPermissionKey)
+            ? MenusWithTitleContainer(title: classKey, menus: [
+                CustomMenuTile(
+                    iconImageName: "classes.svg",
+                    titleKey: viewClassesKey,
+                    onTap: () {
+                      Get.toNamed(Routes.classesScreen);
+                    }),
+              ])
+            : const SizedBox(),
+        staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                permission: viewSessionYearsPermissionKey)
+            ? MenusWithTitleContainer(title: sessionYearKey, menus: [
+                CustomMenuTile(
+                    iconImageName: "session_year.svg",
+                    titleKey: viewSessionYearsKey,
+                    onTap: () {
+                      Get.toNamed(Routes.sessionYearsScreen);
+                    }),
+              ])
+            : const SizedBox(),
+        MenusWithTitleContainer(title: myTaskKey, menus: [
+          CustomMenuTile(
+              iconImageName: "manage_task.svg",
+              titleKey: manageTasksKey,
+              onTap: () {
+                Get.toNamed(Routes.myTasksScreen);
+              }),
+        ]),
+        MenusWithTitleContainer(title: leaveKey, menus: [
+          !context.read<AuthCubit>().getUserDetails().isSchoolAdmin()
+              ? CustomMenuTile(
+                  iconImageName: "apply_leave.svg",
+                  titleKey: applyLeaveKey,
+                  onTap: () {
+                    Get.toNamed(Routes.applyLeaveScreen);
+                  })
+              : const SizedBox(),
+          !context.read<AuthCubit>().getUserDetails().isSchoolAdmin()
+              ? CustomMenuTile(
+                  iconImageName: "my_leave.svg",
+                  titleKey: myLeaveKey,
+                  onTap: () {
+                    Get.toNamed(Routes.leavesScreen,
+                        arguments:
+                            LeavesScreen.buildArguments(showMyLeaves: true));
+                  })
+              : const SizedBox(),
+          (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                      moduleId: staffLeaveManagementModuleId.toString()) &&
+                  staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                      permission: approveLeavePermissionKey))
+              ? CustomMenuTile(
+                  iconImageName: "staff_leave.svg",
+                  titleKey: staffLeaveKey,
+                  onTap: () {
+                    Get.toNamed(Routes.staffsScreen,
+                        arguments:
+                            StaffsScreen.buildArguments(forStaffLeave: true));
+                  })
+              : const SizedBox(),
+          (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                      moduleId: staffLeaveManagementModuleId.toString()) &&
+                  staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                      permission: approveLeavePermissionKey))
+              ? CustomMenuTile(
+                  iconImageName: "staff_leave.svg",
+                  titleKey: teacherLeaveKey,
+                  onTap: () {
+                    Get.toNamed(
+                      Routes.teachersScreen,
+                      arguments: TeachersScreen.buildArguments(
+                          teacherNavigationType: TeacherNavigationType.leave),
+                    );
+                  })
+              : const SizedBox(),
+          // Student leave review, driven by the Student Leave Management module.
+          (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                      moduleId: studentLeaveManagementModuleId.toString()) &&
+                  staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                      permission: viewStudentLeavePermissionKey))
+              ? CustomMenuTile(
+                  iconImageName: "student_attendance.svg",
+                  titleKey: studentLeaveKey,
+                  onTap: () {
+                    Get.toNamed(Routes.studentLeaveScreen);
+                  })
+              : const SizedBox(),
+        ]),
+        (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                    moduleId: attendanceManagementModuleId.toString()) &&
+                staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                    permission: viewStudentAttendancePermissionKey))
+            ? MenusWithTitleContainer(title: attendanceKey, menus: [
+                CustomMenuTile(
+                    iconImageName: "student_attendance.svg",
+                    titleKey: studentAttendanceKey,
+                    onTap: () {
+                      Get.toNamed(Routes.studentsAttendanceScreen);
+                    }),
+                // Teacher/Staff Attendance - School Admin or staff with permission
+                (context.read<AuthCubit>().getUserDetails().isSchoolAdmin() ||
+                        (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                                moduleId: staffAttendanceManagementModuleId
+                                    .toString()) &&
+                            staffAllowedPermissionsAndModulesCubit
+                                .isPermissionGiven(
+                                    permission:
+                                        viewStaffAttendancePermissionKey)))
+                    ? CustomMenuTile(
+                        iconImageName: "my_attendance.svg",
+                        titleKey: staffAttendanceKey,
+                        onTap: () {
+                          final canEdit = context
+                                  .read<AuthCubit>()
+                                  .getUserDetails()
+                                  .isSchoolAdmin() ||
+                              staffAllowedPermissionsAndModulesCubit
+                                  .isPermissionGiven(
+                                      permission:
+                                          editStaffAttendancePermissionKey);
+                          Get.toNamed(Routes.staffAttendanceScreen,
+                              arguments: StaffAttendanceScreen.buildArguments(
+                                  canEdit: canEdit));
+                        })
+                    : const SizedBox(),
+
+                !context.read<AuthCubit>().getUserDetails().isSchoolAdmin()
+                    ? CustomMenuTile(
+                        iconImageName: "my_attendance.svg",
+                        titleKey: myAttendanceKey,
+                        onTap: () {
+                          Get.toNamed(Routes.teacherMyAttendanceScreen);
+                        })
+                    : const SizedBox(),
+              ])
+            : const SizedBox(),
+        // QR attendance is a staff member's own punch, so it does not depend on
+        // the permission to view other people's attendance. It gets its own
+        // section for that reason; the screen still asks the API whether the
+        // feature is switched on and whether the account is eligible.
+        (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                    moduleId: attendanceManagementModuleId.toString()) &&
+                !context.read<AuthCubit>().getUserDetails().isSchoolAdmin())
+            ? MenusWithTitleContainer(title: qrAttendanceKey, menus: [
+                CustomMenuTile(
+                    iconImageName: "qr_attendance.svg",
+                    titleKey: qrAttendanceKey,
+                    onTap: () {
+                      Get.toNamed(Routes.qrAttendanceScreen);
+                    }),
+              ])
+            : const SizedBox(),
+        (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                    moduleId: timetableManagementModuleId.toString()) &&
+                staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                    permission: viewTimetablePermissionKey))
+            ? MenusWithTitleContainer(title: timetableKey, menus: [
+                CustomMenuTile(
+                    iconImageName: "class_timetable.svg",
+                    titleKey: classTimetableKey,
+                    onTap: () {
+                      Get.toNamed(Routes.classTimetableScreen);
+                    }),
+                CustomMenuTile(
+                    iconImageName: "teacher_timetable.svg",
+                    titleKey: teachersTimetableKey,
+                    onTap: () {
+                      Get.toNamed(
+                        Routes.teachersScreen,
+                        arguments: TeachersScreen.buildArguments(
+                            teacherNavigationType:
+                                TeacherNavigationType.timetable),
+                      );
+                    }),
+              ])
+            : const SizedBox(),
+        // Online Class - new feature (UI only for now). Shown unconditionally
+        // until a dedicated module/permission flag is introduced on the backend.
+        MenusWithTitleContainer(title: onlineClassKey, menus: [
+          CustomMenuTile(
+              iconImageName: "online_class.svg",
+              titleKey: onlineClassKey,
+              onTap: () {
+                Get.toNamed(Routes.onlineClassesScreen);
+              }),
+        ]),
+        (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                    moduleId: examManagementModuleId.toString())) &&
+                (staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                        permission: viewExamsPermissionKey) ||
+                    staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                        permission: viewExamResultPermissionKey))
+            ? MenusWithTitleContainer(title: offlineExamKey, menus: [
+                staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                        permission: viewExamsPermissionKey)
+                    ? CustomMenuTile(
+                        iconImageName: "exams.svg",
+                        titleKey: examsKey,
+                        onTap: () {
+                          Get.toNamed(Routes.examsScreen);
+                        })
+                    : const SizedBox(),
+                staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                        permission: viewExamResultPermissionKey)
+                    ? CustomMenuTile(
+                        iconImageName: "offline_result.svg",
+                        titleKey: offlineResultKey,
+                        onTap: () {
+                          Get.toNamed(Routes.offlineResultScreen);
+                        })
+                    : const SizedBox(),
+              ])
+            : const SizedBox(),
+        !context.read<AuthCubit>().getUserDetails().isSchoolAdmin() &&
+                staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                    moduleId: transportationModuleId.toString())
+            ? MenusWithTitleContainer(title: transportationKey, menus: [
+                const TransportNavigationTile(),
+              ])
+            : const SizedBox(),
+        (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                        moduleId: announcementManagementModuleId.toString()) &&
+                    staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                        permission: viewNotificationPermissionKey)) ||
+                (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                        moduleId: announcementManagementModuleId.toString()) &&
+                    staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                        permission: viewAnnouncementPermissionKey))
+            ? MenusWithTitleContainer(title: messageKey, menus: [
+                (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                            moduleId:
+                                announcementManagementModuleId.toString()) &&
+                        staffAllowedPermissionsAndModulesCubit
+                            .isPermissionGiven(
+                                permission: viewNotificationPermissionKey))
+                    ? CustomMenuTile(
+                        iconImageName: "manage_notification.svg",
+                        titleKey: manageNotificationKey,
+                        onTap: () {
+                          Get.toNamed(Routes.manageNotificationScreen);
+                        })
+                    : const SizedBox(),
+                (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                            moduleId:
+                                announcementManagementModuleId.toString()) &&
+                        staffAllowedPermissionsAndModulesCubit
+                            .isPermissionGiven(
+                                permission: viewAnnouncementPermissionKey))
+                    ? CustomMenuTile(
+                        iconImageName: "announcement.svg",
+                        titleKey: manageAnnouncementKey,
+                        onTap: () {
+                          Get.toNamed(Routes.manageAnnouncementScreen);
+                        })
+                    : const SizedBox(),
+              ])
+            : const SizedBox(),
+        (staffAllowedPermissionsAndModulesCubit.isPermissionGiven(
+                permission: createStudentDiaryPermissionKey))
+            ? MenusWithTitleContainer(title: studentDiaryKey, menus: [
+                CustomMenuTile(
+                    iconImageName: "note_book.svg",
+                    titleKey: addStudentDiaryKey,
+                    onTap: () {
+                      Get.toNamed(Routes.studentDiarySelectionScreen);
+                    }),
+              ])
+            : const SizedBox(),
+        (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                    moduleId: feesManagementModuleId.toString())) ||
+                (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                    moduleId: expenseManagementModuleId.toString()))
+            ? MenusWithTitleContainer(title: paymentKey, menus: [
+                (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                            moduleId: feesManagementModuleId.toString()) &&
+                        staffAllowedPermissionsAndModulesCubit
+                            .isPermissionGiven(
+                                permission: viewFeesPaidPermissionKey))
+                    ? CustomMenuTile(
+                        iconImageName: "paid_fees.svg",
+                        titleKey: paidFeesKey,
+                        onTap: () {
+                          Get.toNamed(Routes.paidFeesScreen);
+                        })
+                    : const SizedBox(),
+                (staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                            moduleId: expenseManagementModuleId.toString()) &&
+                        staffAllowedPermissionsAndModulesCubit
+                            .isPermissionGiven(
+                                permission: viewPayrollListPermissionKey))
+                    ? CustomMenuTile(
+                        iconImageName: "manage_payroll.svg",
+                        titleKey: managePayRollsKey,
+                        onTap: () {
+                          Get.toNamed(Routes.managePayrollScreen);
+                        })
+                    : const SizedBox(),
+                staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                        moduleId: expenseManagementModuleId.toString())
+                    ? context.read<AuthCubit>().getUserDetails().isSchoolAdmin()
+                        ? const SizedBox()
+                        : CustomMenuTile(
+                            iconImageName: "my_payroll.svg",
+                            titleKey: myPayRollKey,
+                            onTap: () {
+                              Get.toNamed(Routes.myPayrollScreen);
+                            })
+                    : const SizedBox(),
+                //
+                staffAllowedPermissionsAndModulesCubit.isModuleEnabled(
+                        moduleId: expenseManagementModuleId.toString())
+                    ? !context
+                            .read<AuthCubit>()
+                            .getUserDetails()
+                            .isSchoolAdmin()
+                        ? CustomMenuTile(
+                            iconImageName: "allowances_and_deductions.svg",
+                            titleKey: allowancesAndDeductionsKey,
+                            onTap: () {
+                              Get.toNamed(Routes.allowancesAndDeductionsScreen);
+                            })
+                        : const SizedBox()
+                    : const SizedBox(),
+              ])
+            : const SizedBox(),
+      ],
+    );
+  }
+}

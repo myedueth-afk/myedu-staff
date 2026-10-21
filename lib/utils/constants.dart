@@ -1,0 +1,249 @@
+import 'package:eschool_saas_staff/app/schoolBuildConfig.dart';
+import 'package:eschool_saas_staff/data/models/assignmentSubmission.dart';
+import 'package:eschool_saas_staff/data/models/studyMaterial.dart';
+import 'package:eschool_saas_staff/utils/labelKeys.dart';
+import 'package:flutter/material.dart';
+
+///[Do not add / at the end of the url]`
+
+//Overridable per school by the School Builder addon (runtime.baseUrl).
+const String baseUrl = String.fromEnvironment(
+  "SCHOOL_BASE_URL",
+  defaultValue: "https://myedu.et",
+);
+
+const String databaseUrl = "$baseUrl/api/";
+
+// Reverb WebSocket URL (Pusher protocol)
+const reverbUrl = "wss://myedu.et/app/e2mhe9gu4tb2x2vkncxa";
+
+// Reverb reconnect delay
+const reverbReconnectDelay = Duration(seconds: 3);
+
+double appContentHorizontalPadding = 15.0;
+double horizontalCompetitionListHeight = 70.0;
+double bottomsheetBorderRadius = 15.0;
+Duration snackBarDuration = const Duration(milliseconds: 1000);
+Duration tabDuration = const Duration(milliseconds: 500);
+Duration tileCollapsedDuration = const Duration(milliseconds: 500);
+int nextSearchRequestQueryTimeInMilliSeconds = 700;
+int searchRequestPerodicMilliSeconds = 100;
+double topPaddingOfErrorAndLoadingContainer = 150;
+
+//Off for school builds (see SchoolBuildConfig.showDemoCredentials).
+const bool showDefaultCredentials = SchoolBuildConfig.showDemoCredentials;
+
+// teacher creads
+String defaultSchoolCode = "";
+String defaultEmail = "";
+String defaultPassword = "";
+
+List<String> months = [
+  januaryKey,
+  februaryKey,
+  marchKey,
+  aprilKey,
+  mayKey,
+  juneKey,
+  julyKey,
+  augustKey,
+  septemberKey,
+  octoberKey,
+  novemberKey,
+  decemberKey,
+];
+
+enum LeaveDayType { today, tomorrow, upcoming }
+
+int getLeaveDayTypeStatus({required LeaveDayType leaveDayType}) {
+  if (leaveDayType == LeaveDayType.tomorrow) {
+    return 1;
+  }
+
+  if (leaveDayType == LeaveDayType.upcoming) {
+    return 2;
+  }
+
+  return 0;
+}
+
+int getSatusValueFromKey({required String value}) {
+  if (value == activeKey) {
+    return 1;
+  }
+  if (value == inactiveKey) {
+    return 2;
+  }
+
+  return 0;
+}
+
+const List<String> weekDays = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+String getLeaveTypeValueFromKey({required String leaveTypeKey}) {
+  if (leaveTypeKey == firstHalfKey) {
+    return "First Half";
+  }
+  if (leaveTypeKey == secondHalfKey) {
+    return "Second Half";
+  }
+  return "Full";
+}
+
+///[ 0 -> Pending, 1 -> Approved, 2 -> Rejected ]
+enum LeaveRequestStatus { pending, approved, rejected }
+
+LeaveRequestStatus getLeaveRequestStatusEnumFromValue(int status) {
+  if (status == 1) {
+    return LeaveRequestStatus.approved;
+  }
+
+  if (status == 2) {
+    return LeaveRequestStatus.rejected;
+  }
+
+  return LeaveRequestStatus.pending;
+}
+
+String getLeaveRequestStatusKey(LeaveRequestStatus leaveRequestStatus) {
+  if (leaveRequestStatus == LeaveRequestStatus.approved) {
+    return approvedKey;
+  }
+
+  if (leaveRequestStatus == LeaveRequestStatus.rejected) {
+    return rejectedKey;
+  }
+
+  return pendingKey;
+}
+
+enum StudentListStatus { all, active, inactive }
+
+// 0 => Absent, 1 => Present, 2 => On leave
+enum StudentAttendanceStatus { absent, present, onLeave }
+
+///Amber, so an approved leave reads apart from the green of present and the
+///red of absent
+const Color onLeaveAttendanceColor = Color(0xFFFF8C00);
+
+StudentAttendanceStatus getStudentAttendanceStatusFromValue(int status) {
+  if (status == 0) {
+    return StudentAttendanceStatus.absent;
+  }
+  if (status == 2) {
+    return StudentAttendanceStatus.onLeave;
+  }
+
+  return StudentAttendanceStatus.present;
+}
+
+///The value the submit attendance API stores for each status
+int getStudentAttendanceStatusValue(
+  StudentAttendanceStatus studentAttendanceStatus,
+) {
+  return switch (studentAttendanceStatus) {
+    StudentAttendanceStatus.absent => 0,
+    StudentAttendanceStatus.present => 1,
+    StudentAttendanceStatus.onLeave => 2,
+  };
+}
+
+String getStudentAttendanceStatusKey(
+  StudentAttendanceStatus studentAttendanceStatus,
+) {
+  if (studentAttendanceStatus == StudentAttendanceStatus.absent) {
+    return absentKey;
+  }
+  if (studentAttendanceStatus == StudentAttendanceStatus.onLeave) {
+    return onLeaveKey;
+  }
+  return presentKey;
+}
+
+//assignment submission statuses
+final List<AssignmentSubmissionStatus> allAssignmentSubmissionStatus = [
+  AssignmentSubmissionStatus(
+    typeStatusId: -1,
+    titleKey: allKey,
+    filter: AssignmentSubmissionFilters.all,
+    color: Colors.black,
+  ),
+  AssignmentSubmissionStatus(
+    typeStatusId: 0,
+    titleKey: pendingKey,
+    filter: AssignmentSubmissionFilters.submitted,
+    color: Colors.orange,
+  ),
+  AssignmentSubmissionStatus(
+    typeStatusId: 1,
+    titleKey: acceptedKey,
+    filter: AssignmentSubmissionFilters.accepted,
+    color: Colors.green,
+  ),
+  AssignmentSubmissionStatus(
+    typeStatusId: 2,
+    titleKey: rejectedKey,
+    filter: AssignmentSubmissionFilters.rejected,
+    color: Colors.red,
+  ),
+  AssignmentSubmissionStatus(
+    typeStatusId: 3,
+    titleKey: resubmittedKey,
+    filter: AssignmentSubmissionFilters.resubmitted,
+    color: Colors.orange,
+  ),
+];
+
+//For Study Material type dropdown itemsain
+List<StudyMaterialTypeItem> allStudyMaterialTypeItems = [
+  StudyMaterialTypeItem(type: 1, title: fileUploadKey),
+  StudyMaterialTypeItem(type: 2, title: youtubeLinkKey),
+  StudyMaterialTypeItem(type: 3, title: videoUploadKey),
+  StudyMaterialTypeItem(type: 4, title: otherLinkKey),
+];
+
+const String teacherRoleKey = "Teacher";
+const String studentRoleKey = "Student";
+const String guardianRoleKey = "Guardian";
+
+const String allUserSendNotificationTypeKey = "All users";
+const String specificUserSendNotificationTypeKey = "Specific users";
+const String overDueFeesNotificationTypeKey = "Over Due Fees";
+const String specificRolesSendNotificationTypeKey = "Roles";
+
+const String schoolAdminRoleKey = "School Admin";
+const String driverRoleKey = "Driver";
+
+/// How often the driver's position is reported to the school while a trip is
+/// in progress.
+///
+/// Single knob for the whole tracking cadence: the rate the position stream is
+/// asked for fixes at, the per-request timeout and the guard against duplicate
+/// updates are all derived from it in `TripLocationTracker`.
+const Duration tripLocationUpdateInterval = Duration(seconds: 30);
+
+// Transport Report Issue Labels (Staff/Teacher)
+const List<String> transportReportIssueLabels = [
+  unsafeDrivingKey,
+  unauthorizedPersonKey,
+  missedPickupKey,
+  uncleanBusInteriorKey,
+  busBreakdownKey,
+];
+
+// Driver Report Issue Labels
+const List<String> driverReportIssueLabels = [
+  delayAtStopKey,
+  studentNotAvailableKey,
+  routeBlockageKey,
+  vehicleProblemKey,
+  parentLateKey,
+];

@@ -1,0 +1,183 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+    id "com.google.gms.google-services"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0'
+}
+
+// School Builder addon. A school build passes -PschoolOverlay=<folder>: the
+// builder sets ORG_GRADLE_PROJECT_schoolOverlay for the flutter command it
+// starts, and nowhere else. The folder holds everything that school changes —
+// school.properties, res/ and its google-services.json — so no file in this
+// project is ever edited for a school. Without the property (flutter run,
+// flutter build, Android Studio) every value below is the stock app's.
+def schoolOverlay = null
+def schoolOverlayPath = project.findProperty('schoolOverlay')?.toString()?.trim()
+if (schoolOverlayPath) {
+    schoolOverlay = file(schoolOverlayPath)
+    if (!new File(schoolOverlay, 'school.properties').isFile()) {
+        throw new GradleException("School Builder overlay not found: ${schoolOverlay}")
+    }
+}
+def schoolProperties = new Properties()
+if (schoolOverlay != null) {
+    new File(schoolOverlay, 'school.properties').withReader('UTF-8') { reader -> schoolProperties.load(reader) }
+}
+
+def schoolApplicationId = schoolProperties.getProperty('applicationId', 'et.myedu.staff')
+def schoolAppName = schoolProperties.getProperty('appName', 'MyEdu Staff')
+
+// Signing values come from key.properties, a school's own properties file or an
+// environment variable named in school.properties — never from schools.json.
+def keystoreProperties = new Properties()
+   def keystorePropertiesFile = rootProject.file('key.properties')
+   def usesSchoolKeyProperties = false
+   def schoolKeyPropertiesPath = schoolProperties.getProperty('keyPropertiesFile')
+   if (schoolKeyPropertiesPath != null && !schoolKeyPropertiesPath.trim().isEmpty()) {
+       def candidate = new File(schoolKeyPropertiesPath.trim())
+       if (!candidate.isAbsolute()) {
+           candidate = rootProject.file(schoolKeyPropertiesPath.trim())
+       }
+       if (candidate.exists()) {
+           keystorePropertiesFile = candidate
+           usesSchoolKeyProperties = true
+       }
+   }
+   if (keystorePropertiesFile.exists()) {
+       keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+   }
+
+def signingValue = { String key ->
+    def envName = schoolProperties.getProperty(key + 'Env')
+    if (envName != null && !envName.trim().isEmpty()) {
+        def fromEnv = System.getenv(envName.trim())
+        if (fromEnv != null && !fromEnv.isEmpty()) {
+            return fromEnv
+        }
+    }
+    def override = schoolProperties.getProperty(key)
+    if (override != null && !override.trim().isEmpty()) {
+        return override.trim()
+    }
+    return keystoreProperties[key]
+}
+
+// A relative storeFile resolves against android/app for the stock key.properties,
+// exactly as Flutter's template does, and against a school's own file otherwise.
+def resolveKeystoreFile = {
+    def path = signingValue('storeFile')
+    if (path == null || path.toString().trim().isEmpty()) {
+        return null
+    }
+    def candidate = new File(path.toString().trim())
+    if (!candidate.isAbsolute()) {
+        candidate = usesSchoolKeyProperties
+            ? new File(keystorePropertiesFile.parentFile, path.toString().trim())
+            : file(path.toString().trim())
+    }
+    return candidate
+}
+
+
+android {
+    namespace "et.myedu.staff"
+    compileSdk flutter.compileSdkVersion
+    ndkVersion = "28.2.13676358"
+
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+        coreLibraryDesugaringEnabled true
+
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    if (schoolOverlay != null) {
+        // Build-type source sets outrank main, so each overlay file replaces the
+        // stock resource of the same name — for this build only.
+        sourceSets.matching { it.name in ['debug', 'profile', 'release'] }.configureEach { sourceSet ->
+            sourceSet.res.srcDir(new File(schoolOverlay, 'res'))
+        }
+    }
+
+    defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // Per-school value from addon/config/schools.json; falls back to the stock id.
+        applicationId schoolApplicationId
+        // You can update the following values to match your application needs.
+        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+        minSdkVersion flutter.minSdkVersion
+        targetSdkVersion 36
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+        multiDexEnabled true
+        // Consumed by android:label in AndroidManifest.xml — this is what the
+        // launcher shows under the icon.
+        manifestPlaceholders += [appName: schoolAppName]
+    }
+
+      signingConfigs {
+       release {
+           keyAlias signingValue('keyAlias')
+           keyPassword signingValue('keyPassword')
+           storeFile resolveKeystoreFile()
+           storePassword signingValue('storePassword')
+       }
+   }
+
+    buildTypes {
+        release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+        //    signingConfig signingConfigs.debug
+        signingConfig signingConfigs.release
+        }
+    }
+}
+
+// A school's own google-services.json, read in place of android/app's (only
+// when the google-services plugin is applied; the stock file is untouched).
+if (schoolOverlay != null) {
+    def schoolGoogleServices = new File(schoolOverlay, 'google-services.json')
+    if (schoolGoogleServices.isFile()) {
+        tasks.matching { it.name ==~ /process.*GoogleServices/ }.configureEach { task ->
+            task.googleServicesJsonFiles.setFrom(schoolGoogleServices)
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {
+    implementation 'androidx.multidex:multidex:2.0.1'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.2.2'
+    implementation 'com.google.android.gms:play-services-maps:18.2.0'
+}

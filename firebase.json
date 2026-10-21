@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"ios":{"default":{"projectId":"e-school-saas","appId":"1:539033120705:ios:c20d96f12c47349cd8c940","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"e-school-saas","configurations":{"ios":"1:539033120705:ios:c20d96f12c47349cd8c940"}}}}}}
